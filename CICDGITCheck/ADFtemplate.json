@@ -1,0 +1,291 @@
+﻿{
+  "contentVersion": "1.0.0.0",
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "parameters": {
+    "dataFactoryName": {
+      "type": "string",
+      "metadata": { "description": "Data factory name." }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": { "description": "Name of the Azure storage account that contains the data to be copied." }
+    },
+    "storageAccountKey": {
+      "type": "string",
+      "metadata": { "description": "Key for the Azure storage account." }
+    },
+    "sourceBlobContainer": {
+      "type": "string",
+      "metadata": { "description": "Name of the blob container in the Azure Storage account." }
+    },
+    "sourceBlobName": {
+      "type": "string",
+      "metadata": { "description": "Name of the blob in the container that has the data to be copied to Azure SQL Database table" }
+    },
+    "sqlServerName": {
+      "type": "string",
+      "metadata": { "description": "Name of the Azure SQL Server that will hold the output/copied data." }
+    },
+    "databaseName": {
+      "type": "string",
+      "metadata": { "description": "Name of the Azure SQL Database in the Azure SQL server." }
+    },
+    "sqlServerUserName": {
+      "type": "string",
+      "metadata": { "description": "Name of the user that has access to the Azure SQL server." }
+    },
+    "sqlServerPassword": {
+      "type": "securestring",
+      "metadata": { "description": "Password for the user." }
+    },
+    "targetSQLTable": {
+      "type": "string",
+      "metadata": { "description": "Table in the Azure SQL Database that will hold the copied data." }
+    },
+    "targetSQLReportTable": {
+      "type": "string",
+      "metadata": { "description": "Table in the Azure SQL Database that will hold the EmployeeReport data." }
+    },
+    "transform_Employee_to_EmployeeReport": {
+      "type": "string",
+      "metadata": { "description": "Transform the data From Employee to EmployeeReport." }
+    }
+  },
+  "variables": {
+    "azureSqlLinkedServiceName": "AzureSqlLinkedService",
+    "azureStorageLinkedServiceName": "AzureStorageLinkedService",
+    "blobInputDatasetName": "BlobInputDataset",
+    "sqlOutputDatasetName": "SQLOutputDataset",
+    "sqlOutputReportDatasetName": "SQLOutputReportDataset",
+    "pipelineName": "Blob2SQLPipeline"
+  },
+  "resources": [
+    {
+      "name": "[parameters('dataFactoryName')]",
+      "apiVersion": "2015-10-01",
+      "type": "Microsoft.DataFactory/datafactories",
+      "location": "West US",
+      "resources": [
+        {
+          "type": "linkedservices",
+          "name": "[variables('azureStorageLinkedServiceName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "type": "AzureStorage",
+            "description": "Azure Storage linked service",
+            "typeProperties": {
+              "connectionString": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageAccountName'),';AccountKey=',parameters('storageAccountKey'))]"
+            }
+          }
+        },
+        {
+          "type": "linkedservices",
+          "name": "[variables('azureSqlLinkedServiceName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "type": "AzureSqlDatabase",
+            "description": "Azure SQL linked service",
+            "typeProperties": {
+              "connectionString": "[concat('Server=tcp:',parameters('sqlServerName'),'.database.windows.net,1433;Database=', parameters('databaseName'), ';User ID=',parameters('sqlServerUserName'),';Password=',parameters('sqlServerPassword'),';Trusted_Connection=False;Encrypt=True;Connection Timeout=30')]"
+            }
+          }
+        },
+        {
+          "type": "datasets",
+          "name": "[variables('blobInputDatasetName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]",
+            "[variables('azureStorageLinkedServiceName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "type": "AzureBlob",
+            "linkedServiceName": "[variables('azureStorageLinkedServiceName')]",
+            "structure": [
+              {
+                "name": "EmpId",
+                "type": "Int64"
+              },
+              {
+                "name": "EmpName",
+                "type": "String"
+              },
+              {
+                "name": "Salary",
+                "type": "Int64"
+              }
+            ],
+            "typeProperties": {
+              "folderPath": "[concat(parameters('sourceBlobContainer'), '/')]",
+              "fileName": "[parameters('sourceBlobName')]",
+              "format": {
+                "type": "TextFormat",
+                "columnDelimiter": ",",
+                "firstRowAsHeader": true
+              }
+            },
+            "availability": {
+              "frequency": "Day",
+              "interval": 1
+            },
+            "external": true
+          }
+        },
+        {
+          "type": "datasets",
+          "name": "[variables('sqlOutputDatasetName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]",
+            "[variables('azureSqlLinkedServiceName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "type": "AzureSqlTable",
+            "linkedServiceName": "[variables('azureSqlLinkedServiceName')]",
+            "structure": [
+              {
+                "name": "EmpId",
+                "type": "Int64"
+              },
+              {
+                "name": "EmpName",
+                "type": "String"
+              },
+              {
+                "name": "Salary",
+                "type": "Int64"
+              }
+            ],
+            "typeProperties": {
+              "tableName": "[parameters('targetSQLTable')]"
+            },
+            "availability": {
+              "frequency": "Day",
+              "interval": 1
+            }
+          }
+        },
+        {
+          "type": "datasets",
+          "name": "[variables('sqlOutputReportDatasetName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]",
+            "[variables('azureSqlLinkedServiceName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "type": "AzureSqlTable",
+            "linkedServiceName": "[variables('azureSqlLinkedServiceName')]",
+            "structure": [
+              {
+                "name": "EmpId",
+                "type": "Int64"
+              },
+              {
+                "name": "EmpName",
+                "type": "String"
+              },
+              {
+                "name": "Salary",
+                "type": "Int64"
+              }
+            ],
+            "typeProperties": {
+              "tableName": "[parameters('targetSQLReportTable')]"
+            },
+            "availability": {
+              "frequency": "Day",
+              "interval": 1
+            }
+          }
+        },
+        {
+          "type": "datapipelines",
+          "name": "[variables('pipelineName')]",
+          "dependsOn": [
+            "[parameters('dataFactoryName')]",
+            "[variables('azureStorageLinkedServiceName')]",
+            "[variables('azureSqlLinkedServiceName')]",
+            "[variables('blobInputDatasetName')]",
+            "[variables('sqlOutputDatasetName')]",
+            "[variables('sqlOutputReportDatasetName')]"
+          ],
+          "apiVersion": "2015-10-01",
+          "properties": {
+            "activities": [
+              {
+                "name": "CopyFromAzureBlobToAzureSQL",
+                "description": "Copy data frm Azure blob to Azure SQL",
+                "type": "Copy",
+                "inputs": [
+                  {
+                    "name": "[variables('blobInputDatasetName')]"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "name": "[variables('sqlOutputDatasetName')]"
+                  }
+                ],
+                "typeProperties": {
+                  "source": {
+                    "type": "BlobSource"
+                  },
+                  "sink": {
+                    "type": "SqlSink",
+                    "sqlWriterCleanupScript": "$$Text.Format('DELETE FROM {0}', 'EmployeeData')"
+                  },
+                  "translator": {
+                    "type": "TabularTranslator",
+                    "columnMappings": "EmpId:EmpId,EmpName:EmpName,Salary:Salary"
+                  }
+                },
+                "Policy": {
+                  "concurrency": 1,
+                  "executionPriorityOrder": "NewestFirst",
+                  "retry": 3,
+                  "timeout": "01:00:00"
+                }
+              },
+              {
+                "name": "SqlTabletoSqlDbSprocActivity",
+                "type": "SqlServerStoredProcedure",
+                "inputs": [
+                  {
+                    "name": "[variables('sqlOutputDatasetName')]"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "name": "[variables('sqlOutputReportDatasetName')]"
+                  }
+                ],
+                "typeProperties": {
+                  "storedProcedureName": "[parameters('transform_Employee_to_EmployeeReport')]"
+                },
+                "scheduler": {
+                  "frequency": "Day",
+                  "interval": 1
+                },
+                "policy": {
+                  "timeout": "02:00:00",
+                  "concurrency": 1,
+                  "executionPriorityOrder": "NewestFirst",
+                  "retry": 1
+                }
+              }
+            ],
+            "start": "2018-03-02T00:00:00Z",
+            "end": "2018-03-03T00:00:00Z"
+          }
+        }
+      ]
+    }
+  ]
+}

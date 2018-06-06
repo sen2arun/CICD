@@ -1,0 +1,18 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountName": { "value": "cicdadf1705" },
+    "dataFactoryName": { "value": "adfcicd1705" },
+    "storageAccountKey": { "value": "KfCd609k9eepVSDOxGpZrWfBZZX+DviymeByuUgHnwZr7ojVD3c3p8m6fL0xFCJ8BUtygFUxWrlrIgpWrxYQVw==" },
+    "sourceBlobContainer": { "value": "adfcicd1705" },
+    "sourceBlobName": { "value": "Employee.csv" },
+    "sqlServerName": { "value": "adventureserver198" },
+    "databaseName": { "value": "CICDAzureSQLDB" },
+    "sqlServerUserName": { "value": "adventureadmin" },
+    "sqlServerPassword": { "value": "Srisha@123456" },
+    "targetSQLTable": { "value": "dbo.EmployeeData" },
+    "targetSQLReportTable": { "value": "dbo.EmployeeReport" },
+    "transform_Employee_to_EmployeeReport": { "value": "dbo.uspTransformEmployeeToEmployeeReport" }
+  }
+}
